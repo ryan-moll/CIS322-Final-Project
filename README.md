@@ -1,89 +1,47 @@
 # Project 7: Adding authentication and user interface to brevet time calculator service
 
-## What is in this repository
+## Info
 
-You have a minimal implementation of password- and token-based authentication modules in "Auth" folder, using which you can create authenticated REST API-based services (as demonstrated in class). 
+* Author: Ryan Moll
 
-## Recap 
 
-You will reuse *your* code from project 6 (https://bitbucket.org/UOCIS322/proj6-rest/). Recall: you created the following three parts: 
+## Overview:
 
-* You designed RESTful services to expose what is stored in MongoDB. Specifically, you used the boilerplate given in DockerRestAPI folder, and created the following:
+* This project is a calculator built to calculate open times and close times for checkpoints in a brevet. It does so using Flask to handle the page serving and mongoDB to store the data. It also offers APIs which can be accessed to get the open and close times in JSON or CSV format. These APIs are protected, and require a token. This token can be provided two ways:
 
-** "http://<host:port>/listAll" should return all open and close times in the database
+** The user can register and login on the frontend of the server. Upon logging in, a token will be generated and that token will remain valid for 10 minutes. During those 10 minutes, the user has free reign to access all of the APIs. Should they want to see their current token, they can navigate to the page at "http://0.0.0.0:5000/api/token" which will reveal their current active token and its duration in a JSON dict. Should they want to refresh their token, they must login again to prove that they are still a valid user.
 
-** "http://<host:port>/listOpenOnly" should return open times only
+** The other way a user can generate a token is by making a GET request via curl (or a comparable service) to "http://0.0.0.0:5000/api/token". In that request, the user must provide valid login credentials in a dictionary of the form {"username":"password"} for the "authorization" value (on curl this is denoted with the "-u" flag). This will return a JSON dict with a newly generated token corresponding to that user, and the duration that that token is valid in seconds. This token can be used to generate more tokens so that the user can effectively stay logged in. 
 
-** "http://<host:port>/listCloseOnly" should return close times only
+* If you don't have a username and password yet, you can register a new user. Once again, this can be done two ways:
 
-* You also designed two different representations: one in csv and one in json. For the above, JSON should be your default representation. 
+** First, you can user the frontend to register a new user. Navigate to the homepage at "http://0.0.0.0:5000/" and click "register" in the top-right corner. Here you can create a new user with a username and valid password. If the username is already taken, or the password is not at leat 8 characters in length, the user will not be created. You will know if your user was successfully created if you are redirected to the login page after clicking register. Here you can log in the user you just created. And don't worry about your password being stolen! It is hashed before it is stored in the database.
 
-** "http://<host:port>/listAll/csv" should return all open and close times in CSV format
+** Alternatively, you can once again make a POST request via curl or a comparable service to "http://0.0.0.0:5000/api/register". In the request, you must provide a data value (-d) that is a dictionary with the following format: "{"username":"<yourusername>", "password":"<yourpassword>"}". Assuming the username and password are valid, the user will be created and added to the database, and a JSON object will be returned containing the newly created user, and a Location header containing the URI at which you can access that user.
 
-** "http://<host:port>/listOpenOnly/csv" should return open times only in CSV format
+* To run the project, execute the commands "docker-compose build" and "docker-compose up" to build the docker containers and run them. Next, you should navigate to the page at "http://0.0.0.0:5000/" in a browser. This is the html landing page where you can plan out your brevet and submit your data. The page will do its best to prevent you from submitting invalid data or displaying if the database is empty. This is revealed if you hover your mouse over the disabled buttons. Once you have entered valid data and submitted, you can view your data with the 'display' button. If you are not logged in, a login and register button will be available at the top right corner of the index page. If you have logged in, a logout button will be available, allowing you to log out. 
 
-** "http://<host:port>/listCloseOnly/csv" should return close times only in CSV format
+** On the login page, a remember me button is available. Should you check this button, your user will remain logged in even if you close your browser. 
 
-** "http://<host:port>/listAll/json" should return all open and close times in JSON format
+** Requests made through this webservice are protected from CSRF attacks
 
-** "http://<host:port>/listOpenOnly/json" should return open times only in JSON format
+* Available APIs: (All token protected)
 
-** "http://<host:port>/listCloseOnly/json" should return close times only in JSON format
+** http://0.0.0.0:5001/listAll or http://0.0.0.0:5001/listAll/json will provide both the open and close times for each checkpoint in
+JSON format
 
-* You also added a query parameter to get top "k" open and close times. For examples, see below.
+** http://0.0.0.0:5001/listOpenOnly or http://0.0.0.0:5001/listOpenOnly/json will provide only the open time for each checkpoint in
+JSON format
 
-** "http://<host:port>/listOpenOnly/csv?top=3" should return top 3 open times only (in ascending order) in CSV format 
+** http://0.0.0.0:5001/listCloseOnly or http://0.0.0.0:5001/listCloseOnly/json will provide only the close time for each checkpoint
+in JSON format
 
-** "http://<host:port>/listOpenOnly/json?top=5" should return top 5 open times only (in ascending order) in JSON format
+** http://0.0.0.0:5001/listAll/csv will provide both the open and close times for each checkpoint in CSV format
 
-* You'll also designed consumer programs (e.g., in jQuery) to expose the services.
+** http://0.0.0.0:5001/listOpenOnly/csv will provide only the open time for each checkpoint in CSV format
 
-## Functionality you will add
+** http://0.0.0.0:5001/listCloseOnly/csv will provide only the close time for each checkpoint in CSV format
 
-In this project, you will add the following functionality:
+*** Note: The CSV endpoints will automatially download the CSV formatted data as a .csv file onto your computer. From there you can open the data in excel or use it however you like.
 
-### Part 1: Authenticating the services 
-
-- POST **/api/register**
-
-Registers a new user. On success a status code 201 is returned. The body of the response contains a JSON object with the newly added user. A `Location` header contains the URI of the new user. On failure status code 400 (bad request) is returned. Note: The password is hashed before it is stored in the database. Once hashed, the original password is discarded. Your database should have three fields: id (unique index), username and password for storing the credentials.
-
-- GET **/api/token**
-
-Returns a token. This request must be authenticated using a HTTP Basic Authentication (see password.py for example). On success a JSON object is returned with a field `token` set to the authentication token for the user and a field `duration` set to the (approximate) number of seconds the token is valid. On failure status code 401 (unauthorized) is returned.
-
-- GET **/RESOURCE-YOU-CREATED-IN-PROJECT-6**
-
-Return a protected <resource>, which is basically what you created in project 6. This request must be authenticated using token-based authentication only (see testToken.py). HTTP password-based (basic) authentication is not allowed. On success a JSON object with data for the authenticated user is returned. On failure status code 401 (unauthorized) is returned.
-
-### Part 2: User interface
-
-The goal of this part of the project is to create frontend/UI for Brevet app using Flask-WTF and Flask-Login introduced in lectures. You frontend/UI should use the authentication that you created above. In addition to creating UI for basic authentication and token generation, you will add three additional functionalities in your UI: (a) remember me, (b) logout, and (c) CSRF protection. Note: You don’t have to maintain sessions.
-
-## Tasks
-
-You'll turn in your credentials.ini using which we will get the following:
-
-* The working application with two parts.
-
-* Dockerfile
-
-* docker-compose.yml
-
-## Grading Rubric
-
-* If your code works as expected: 100 points. This includes:
-    * Basic APIs work as expected in part 1.
-    * Decent user interface in part 2 including three functionalities in the UI.
-
-* For each non-working API in part 1, 15 points will be docked off. Part 1 carries 45 points.
-
-* For the UI and the three functionalies, decent UI carries 15 points. Each functionality carries 10 points. In short, part 2 carries 45 points.
-
-* If none of them work, you'll get 10 points assuming
-    * README is updated with your name and email ID.
-    * The credentials.ini is submitted with the correct URL of your repo.
-    * Dockerfile is present. 
-    * Docker-compose.yml works/builds without any errors.
-
-* If the Docker-compose.yml doesn't build or if credentials.ini is missing, 0 will be assigned.
+*** Each endpoint can be limited with the 'top' parameter. Simply add "?top=<int>" to make the api return only the top 'k' values of the query where 'k' is the integer you passed in as the top parameter.

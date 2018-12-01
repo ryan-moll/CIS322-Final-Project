@@ -1,0 +1,197 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html> <head>
+<title>ACP Controle Times</title>
+
+  <!-- 'viewport' is used by bootstrap to respond to device size -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Javascript:  JQuery from a content distribution network (CDN) -->
+  <script
+     src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
+  </script>
+
+  <!-- Bootstrap includes javascript and css  (must follow jquery) -->
+  <link rel="stylesheet"
+   href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+   <script
+    src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js">
+   </script>
+
+  <!-- moment.js is the JavaScript equivalent of arrow.py -->
+  <script 
+    src="{{ url_for('static', filename="js/moment.min.js") }}"></script>
+
+</head>
+
+   <!-- Our own style sheet -->
+   <link rel="stylesheet" href="/static/css/calc.css" />
+
+<body>
+<header align="right" style="padding-right: 8px;padding-top: 3px">
+  {% if current_user.is_anonymous %}
+      <a href="{{ url_for('login') }}">Login</a>/<a href="{{ url_for('register') }}">Register</a>
+  {% else %}
+      <a href="{{ url_for('logout') }}">Logout</a>
+  {% endif %}
+</header>
+<!-- bootstrap requires a 'container' div around content -->
+<div class="container">
+
+{% if current_user.is_authenticated %}
+    <h2>Hi {{ current_user.name }}!</h2>
+{% endif %}
+
+<h1>ACP Brevet Times</h1>
+  <p>This worksheet is for ACP-sanctioned brevets between 200 and 1000 kilometers</p>
+
+<!-- Design on bootstrap grid -->
+<form role="form" id="data_form" action="/submit" method="POST">
+<input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token() }}"/>
+<div class="row">
+  <div class="col-md-4">
+    <label>Distance</label>
+  <select name="distance" id="brevet_dist_km">
+    <option value="200">200km</option>
+    <option value="300">300km</option>
+    <option value="400">400km</option>
+    <option value="600">600km</option>
+    <option value="1000">1000km</option>
+  </select>
+  </div> <!-- columns 1--4  -->
+  <div class="col-md-6">
+    <label>Begins at</label>
+    <input type=date name="begin_date" id="begin_date" value="2017-01-01" />
+    <input type=time name="begin_time" id="begin_time" value="00:00"    />
+  </div> <!-- columns 5-10 -->
+  </div> <!-- row -->
+
+  <button type="submit" id="sub" disabled="disabled" title="Your distances are not far enough to satisfy the total brevet length you selected">Submit</button>
+  <button onclick="display_data()" type="button" id="disp" disabled="disabled" title="This button will become clickable after you have submitted new data">Display</button>
+  <p id="warnings" style="color:red"></p>
+  <!-- Although we do not use tables for general page layout, they are
+       appropriate for something that really is a table, like this
+       one.  We allocate it the full 12 columns of the bootstrap grid.
+  -->
+  <div class="row">
+  <div class="col-md-12"> 
+  <table class="control_time_table">
+      <tr>
+	<th> Miles </th>
+	<th> Km </th>
+	<th>Location</th>
+	<th>Open</th>
+	<th>Close</th>
+      </tr>
+   {% for row in range(20) %}
+    <tr class="control">
+      <!-- Dist (mi) -->
+      <td><input name="miles" type="number" step="any" min="0" max="900" size="5" /></td>
+      <!-- Dist (km) -->
+      <td><input name="km" type="text" min="0" max="1100" size="5" /> </td>
+      <!-- Location (optional) -->
+      <td><input name="location" type="text" placeholder="Optional location name" size="20" /> </td>
+      <!-- Open time (read only, set by JavaScript function -->
+      <td><input name="open" type="datetime" value="" readonly /></td>
+      <!-- Close time (read only, set by JavaScript function -->
+      <td><input name="close" type="datetime" value="" readonly /></td>
+      <!-- Notes (error messages for this row) -->
+    </tr>
+    {% endfor %}
+  </table>
+  </div> <!-- col -->
+  </div> <!-- row -->
+</form>
+
+<script type="text/javascript">
+
+  var SCRIPT_ROOT = {{ request.script_root|tojson|safe }} ;
+  var TIME_CALC_URL = SCRIPT_ROOT + "/_calc_times";
+
+  function calc_times(control) {
+    var km = control.find("input[name='km']").val();
+    var begin_time = document.getElementById("begin_time").value;
+    var begin_date = document.getElementById("begin_date").value;
+    var distance = document.getElementById("brevet_dist_km").value;
+    var open_time_field = control.find("input[name='open']");
+    var close_time_field = control.find("input[name='close']");
+    var warnings = document.getElementById("warnings");
+    var sub_button = document.getElementById("sub");
+    var token = document.getElementById("csrf_token").value;
+    console.log(token);
+
+    $.ajaxSetup({
+      headers : {
+        'Csrf-Token' : token
+      }
+    });
+    
+    $.getJSON(TIME_CALC_URL, { km: km, begin_time: begin_time, begin_date: begin_date, distance: distance },
+      function(data) { // response handler
+        var times = data.result;
+        if(times.error == 1){
+           console.log("The checkpoint distance was too much larger than the brevet distance.");
+           open_time_field.val("");
+           close_time_field.val("");
+           warnings.innerHTML = "ERROR: Checkpoint distance is too big.";
+           sub_button.disabled = "disabled";
+           sub_button.title = "One of your distances is too large. Remove it so you can submit your data";
+        }else if(times.error == 2){
+           console.log("Tried to submit an empty field");
+           open_time_field.val("");
+           close_time_field.val("");
+           warnings.innerHTML = "";
+        } else{
+          warnings.innerHTML = "";
+          open_time_field.val( moment(times.open).format("ddd M/D H:mm"));
+          close_time_field.val( moment(times.close).format("ddd M/D H:mm"));
+          if(times.enough){
+            sub_button.disabled = "";
+            sub_button.title = "Click here to submit your valid data";
+          }
+        }
+      } // End of handler function
+    );  // End of getJSON
+  }     // End of calc_times
+
+  $(document).ready(function(){ // Do the following when the page is finished loading
+    $('input[name="miles"]').change(
+       function() {
+           var miles = parseFloat($(this).val());
+           var km = (1.609344 * miles).toFixed(1) ;
+           console.log("Converted " + miles + " miles to " + km + " kilometers");
+           var control_entry = $(this).parents(".control")
+           var target = control_entry.find("input[name='km']");
+           target.val( km );
+           // Then calculate times for this entry
+           calc_times(control_entry);
+        });
+
+    $('input[name="km"]').change(
+       function() {
+           var km = parseFloat($(this).val());
+           var miles = (0.621371 * km).toFixed(1) ;
+           console.log("Converted " + km + " km to " + miles + " miles");
+           var control_entry = $(this).parents(".control")
+           var target = control_entry.find("input[name='miles']");
+           target.val( miles );
+           calc_times(control_entry);// Then calculate times for this entry
+        });
+
+    var reload = {{ reload|safe }};
+    var disp_button = document.getElementById("disp");
+    if(reload){
+        disp_button.disabled = "";
+        disp_button.title = "Click here to see the most recently submitted data";
+    }
+
+  });   // end of what we do on document ready
+
+  function display_data() {
+    console.log("Display data requested");
+    window.location = "http://0.0.0.0:5000/done";
+  }
+
+</script>
+
+</div>
+</body> </html>

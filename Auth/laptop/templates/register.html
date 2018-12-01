@@ -1,0 +1,29 @@
+<!DOCTYPE HTML>
+<html> 
+<head>
+	<title>Log in</title>
+	<link rel="stylesheet" href="/static/css/login.css" />
+	<link href="https://fonts.googleapis.com/css?family=Abel" rel="stylesheet">
+</head>
+<body>
+	<div class="navbar">
+  		<a href="{{ url_for('index') }}">Home</a>
+  		<a href="{{ url_for('login') }}">Login</a>
+	</div>
+	<div class="login">
+		<h2>Login</h2>
+		<form method="POST" action="/register">
+		    <div class="center">{{ form.username.label }}</div>
+		    <div class="center">{{ form.username(class="css_class") }}</div>
+		    <div class="center">{{ form.password.label }}</div>
+		    <div class="center">{{ form.password() }}</div>
+		    <div class="center">{{ form.confirm.label }}</div>
+		    <div class="center">{{ form.confirm() }}</div>
+		    <br>
+		    <div class="center">{{ form.submit() }}</div>
+		    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+		</form>
+	</div>
+	<p class="center">Already have an account? Click Login in the navbar above!</a></p>
+</body> 
+</html>

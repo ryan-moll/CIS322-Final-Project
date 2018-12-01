@@ -1,0 +1,49 @@
+{% for item in items %}
+  {% if item.distance != "" %}
+    <h2> {{ item.distance }}km ACP BREVET<h2>
+  {% endif %}
+{% endfor %}
+
+<table class="result_table">
+    <tr>
+      <th> CHECKPOINT </th>
+      <th>             </th>
+      <th>DATE/TIME</th>
+    </tr>
+    <tr>
+      <th>============</th>
+      <th>         </th>
+      <th>===========</th>
+    </tr>
+    {% for item in items %}
+    <tr class="result">
+      <td><b>{{item.location}}</b></td>
+    </tr>
+    <tr class="result">
+      <!-- Dist (km) -->
+      <td>{{item.km}}</td>
+      <td>Start:</td>
+      <!-- Open time -->
+      <td>{{item.open_time}}</td>
+    </tr>
+    <tr class="result">
+      <!-- Dist (mi) -->
+      <td>{{item.miles}}(mi)</td>
+      <td>Close:</td>
+      <!-- Close time -->
+      <td>{{item.close_time}}</td>
+    </tr>
+    <tr>
+      <td><br></td>
+    </tr>
+    {% endfor %}
+</table>
+
+<br>
+<button id="myButton">Return to home</button>
+
+<script type="text/javascript">
+    document.getElementById("myButton").onclick = function () {
+    window.location = "http://0.0.0.0:5000/";
+    };
+</script>

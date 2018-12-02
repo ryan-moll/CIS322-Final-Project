@@ -293,6 +293,8 @@ def register_user():
     user = load_user_from_name(username)
     if user:
         abort(400)                                                          # Someone already has that username
+    if len(str(password)) < 8:
+        abort(400)                                                          # Password is too short
     usrAdd = myDB["users"]
     hashPass = generate_password_hash(password)
     user = {"username": username, "password": hashPass, "id": str(nextUserId)}
@@ -334,6 +336,9 @@ def login():
             login_user(user, form.remember_me.data)
 
         token = current_user.generate_auth_token()                  # Generate a token for the logged in user
+        token = str(token)
+        token = token[2:]
+        token = token[:-1]
         flask.session['api_session_token'] = token                  # Store that token as a session variable
         
         nextUrl = flask.request.args.get('next')
@@ -346,17 +351,27 @@ def login():
 
 @app.route('/api/token')
 def get_token():
-    i = validate(request.authorization['username'], request.authorization['password'])
+    if request.authorization is not None:
+        i = validate(request.authorization['username'], request.authorization['password']) #Check for username and password first
+    else: 
+        i = validate("fail", "a") #Guaranteed to fail if user is not logged in and there is no active session token
     if i is 1 or i is 2:
         return jsonify({'token': str(flask.session['api_session_token']), 'duration': 600})
     if i is 3:
         u = load_user_from_name(request.authorization['username'])
         token = u.generate_auth_token()
-        return jsonify({'token': str(token), 'duration': 600})
+        token = str(token)
+        token = token[2:]
+        token = token[:-1]
+        app.logger.debug(token)
+        return jsonify({'token': token, 'duration': 600})
     if i is 4:
         u = User.verify_auth_token(request.authorization['username'])
         token = u.generate_auth_token()
-        return jsonify({'token': str(token), 'duration': 600})
+        token = str(token)
+        token = token[2:]
+        token = token[:-1]
+        return jsonify({'token': token, 'duration': 600})
     abort(401)
 
 @app.route('/api/users/<int:id>')
@@ -439,7 +454,7 @@ def populate_USERS():
         USERS[nextUserId] = userInstance
         nextUserId = nextUserId + 1
 
-def print_all_users(place):
+def print_all_users(place): # For debugging
     if place == 'database':
         app.logger.debug("Printing the users in myDB.")
         users_collection = myDB["users"]
@@ -473,7 +488,7 @@ def validate(flex, password):
     #If all of these fail the request is not valid
     return 0
 
-def load_user_from_name(username):
+def load_user_from_name(username): # Returns the user object correspoding to the username passed in
     global USERS
     for i in range(len(USERS)):
         if username == str(USERS[i].name):

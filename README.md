@@ -24,7 +24,7 @@
 
 	2. Alternatively, you can once again make a POST request via curl or a comparable service to "http://0.0.0.0:5000/api/register". In the request, you must provide a data value (-d) that is a dictionary with the following format: "{"username":"<yourusername>", "password":"<yourpassword>"}". Assuming the username and password are valid, the user will be created and added to the database, and a JSON object will be returned containing the newly created user, and a Location header containing the URI at which you can access that user. Once again, if the username is already taken, or the password is not at leat 8 characters in length, the user will not be created.
 
-				* A curl request to create a new user with the username "Steven" and the password "Kitten123" would look like this:
+		* A curl request to create a new user with the username "Steven" and the password "Kitten123" would look like this:
 			```
 			curl -u Steven:Kitten123 -i -X GET http://127.0.0.1:5000/api/token
 			```
@@ -49,6 +49,9 @@
 
 	* http://0.0.0.0:5001/listCloseOnly/csv will provide only the close time for each checkpoint in CSV format
 
-		* Note: The CSV endpoints will automatially download the CSV formatted data as a .csv file onto your computer. From there you can open the data in excel or use it however you like.
+		* A curl request to access the /listAll/csv resource using a token would look like this:
+			```
+			curl -u <VALID-TOKEN-HERE>: -i -X GET http://127.0.0.1:5000/listAll/csv
+			```
 
 		* Each endpoint can be limited with the 'top' parameter. Simply add "?top=<int>" to make the api return only the top 'k' values of the query where 'k' is the integer you passed in as the top parameter.

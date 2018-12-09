@@ -103,7 +103,11 @@ class LoginForm(FlaskForm):
 def require_api_token(func):
     @wraps(func)
     def check_token(*args, **kwargs):
-        if User.verify_auth_token(request.authorization['username']) is None:               # Check first if there is a given valid token
+        if request.authorization is not None:                                               # Request is not from the front-end
+            if User.verify_auth_token(request.authorization['username']) is None:           # The token they provided was invalid
+                abort(401)                                                                  # Unauthorized
+            return func(*args, **kwargs)                                                    # Otherwise just send them where they wanted to go
+        else:                                                                               # Request is from the front end
             if 'api_session_token' not in flask.session:                                    # If the user's token isn't in their session
                 abort(401)                                                                  # Unauthorized
             if current_user.verify_auth_token(flask.session['api_session_token']) is None:  # Verify that the token is valid and is not expired
